@@ -1,0 +1,95 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+.DS_Store
+dist
+dist-ssr
+coverage
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Quasar
+/.quasar
+/dist
+/src-cordova/platforms
+/src-cordova/plugins
+/src-cordova/www
+/src-capacitor/www
+/src-electron/dist
+/src-pwa/dist
+
+# ENV
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+*[Tt]humbs.db
+*.tmp
+*.temp
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyc
+*.egg-info/
+build/
+
+# Downloaded config files (only top-level download directory)
+/download/
+
+# Screenshots
+screen shot/
+
+# Playwright artifacts
+.playwright-mcp/
+
+# Claude commands
+.claude/
+
+# Config and image files
+*.txt
+*.png
+
+# ...but the dependency manifest must be tracked (downloaded configs are
+# already excluded by the /download/ rule above).
+!requirements.txt
+
+
+# backend/Dockerfile is part of the deployable stack and must be tracked
+
+# Local-only compose override
+docker-compose.override.yml
+
+# Local tooling / dev settings
+backend/.flaskenv
+.quasar/
+
+# Private notes (credentials, real-data dumps) must never be published
+CLAUDE.md
+.env
+!docs/screenshot.png

@@ -1,0 +1,14 @@
+# Backend dependencies, pinned to the versions the portal runs on (Python 3.8.10).
+Flask==3.0.3
+Flask-Cors==5.0.0
+Flask-Migrate==4.0.4
+Flask-SQLAlchemy==3.0.5
+SQLAlchemy==2.0.42
+PyMySQL==1.1.1
+mysql-connector-python==9.0.0
+ldap3==2.9.1
+pytz==2025.2
+requests==2.22.0
+openpyxl==3.1.5
+gunicorn==23.0.0
+python-dotenv==1.0.1

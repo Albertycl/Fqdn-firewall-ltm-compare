@@ -1,0 +1,114 @@
+# Full stack: database, backend API and frontend.
+#
+#   docker compose up -d --build
+#
+# Copy .env.example to .env and set DB_PASSWORD first (there is no default password).
+# Bundled database:  docker compose --profile bundled-db up -d --build
+# then load the made-up demo data:  ./demo/load-demo-data.sh
+
+services:
+  # Optional. Only starts with:  --profile bundled-db
+  # Omit the profile to use a database you already run (set DB_HOST/DB_PORT in .env).
+  db:
+    image: mariadb:11.6.2
+    container_name: fqdn-db
+    profiles: ["bundled-db"]
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    ports:
+      - "${DB_PUBLISHED_PORT:-3307}:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      # Creates the fqdn_tool and fqdn_v3 databases, only when db_data is empty.
+      - ./demo/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks: [fqdn]
+
+  backend:
+    image: fqdn-backend:latest
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: fqdn-backend
+    restart: unless-stopped
+    # No depends_on: the database may be external. The entrypoint waits for it.
+    environment:
+      # Defaults target the bundled db service; override in .env to use your own.
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      DB_NAME: ${DB_NAME:-fqdn_tool}
+      CONFIG_SOURCE_URL: ${CONFIG_SOURCE_URL:-http://config-server.example/configs/}
+      FQDN_DB_ENABLED: ${FQDN_DB_ENABLED:-true}
+      # Host, user and password default to the DB_* values above.
+      FQDN_DB_NAME: ${FQDN_DB_NAME:-fqdn_v3}
+      FQDN_DB_TIMEOUT: ${FQDN_DB_TIMEOUT:-3}
+      FQDN_DB_COOLDOWN: ${FQDN_DB_COOLDOWN:-60}
+      DOWNLOAD_DIR: /data/download
+      DAILY_UPDATE_LOG: /data/daily_update.log
+      # Same value the cron service uses, so the dashboard's "next run" cannot
+      # disagree with the schedule that is actually installed.
+      DAILY_UPDATE_HOUR: ${DAILY_UPDATE_HOUR:-6}
+      TZ: ${TZ:-Asia/Taipei}
+      # A proxy must not intercept the config server.
+      NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,db}
+      no_proxy: ${NO_PROXY:-localhost,127.0.0.1,db}
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      http_proxy: ${HTTP_PROXY:-}
+    ports:
+      - "${BACKEND_PUBLISHED_PORT:-5432}:5432"
+    volumes:
+      - downloads:/data
+    # Lets DB_HOST=host.docker.internal reach a database on the host itself.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [fqdn]
+
+  frontend:
+    image: fqdn-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fqdn-frontend
+    restart: unless-stopped
+    environment:
+      # nginx proxies /api/ here; service name keeps it host-independent.
+      BACKEND_URL: http://backend:5432
+    ports:
+      - "${FRONTEND_PUBLISHED_PORT:-5434}:80"
+    networks: [fqdn]
+
+  # Runs the daily update at 06:00 inside the stack, so no host crontab is needed.
+  # Off by default (it needs a reachable CONFIG_SOURCE_URL and replaces the demo data):
+  #   docker compose --profile daily-update up -d
+  # curl/tzdata are baked into the image; nothing is installed at start-up, so
+  # this works on a server with no network access.
+  cron:
+    image: fqdn-cron:latest
+    build:
+      context: ./docker/cron
+    container_name: fqdn-cron
+    profiles: ["daily-update"]
+    restart: unless-stopped
+    environment:
+      DAILY_UPDATE_HOUR: ${DAILY_UPDATE_HOUR:-6}
+      BACKEND_URL: http://backend:5432
+      TZ: ${TZ:-Asia/Taipei}
+    volumes:
+      - downloads:/data
+    networks: [fqdn]
+
+volumes:
+  db_data:
+  downloads:
+
+networks:
+  fqdn:
+    driver: bridge
